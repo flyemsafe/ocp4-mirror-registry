@@ -1,0 +1,38 @@
+---
+## Where to store the self signed generated certs
+ssl_certs_source: "{{ playbook_dir }}/files"
+container_dir: "/opt/containers/registry"
+
+## Default names for self generated key and cert
+ssl_key_filename: "{{ ansible_hostname }}.key"
+ssl_cert_filename: "{{ ansible_hostname }}.crt"
+ssl_csr_filename: "{{ ansible_hostname }}.crt"
+
+## Full path to cert key and certificate
+ssl_cert_file: "{{ ssl_certs_source }}/{{ ssl_key_filename }}"
+ssl_key_file: "{{ ssl_certs_source }}/{{ ssl_cert_filename }}"
+ssl_csr_file: "{{ ssl_certs_source }}/{{ ssl_csr_filename }}"
+
+## Should we generate a self signed cert?
+## no - if you are providing your own otherwise - yes
+## make sure to provide the ssl_cert_filename and ssl_cert_file
+generate_self_signed_certs: yes
+
+## Options to for CSR
+self_signed_certs_options:
+    cert_country: "US"
+    cert_state: "FL"
+    cert_locality: "Orange"
+    cert_org_name: "Lab"
+    cert_org_unit: "Office"
+    cert_common_name: "{{ ansible_fqdn }}"
+
+## we use htpasswd to setup user to access the registry container
+registry_username: regadmin
+registry_password: regadmin
+
+## Set this option to absent to delete the registry container
+container_state: started
+
+## no need to change the below
+update_trust_file_name: /etc/pki/ca-trust/source/anchors/ca.crt
