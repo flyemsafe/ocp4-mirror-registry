@@ -1,16 +1,25 @@
 ---
-## Where to store the self signed generated certs
+## Where to find your cert and cert key
 ssl_certs_source: "{{ playbook_dir }}/files"
+
+## location for the container peristant storage
+## this location should have at least 8G of
+## available storage or you can specify a
+## different path for the data dir with
+## container_data_dir
 container_dir: "/opt/containers/registry"
+
+## data directory for mirrored content storage location
+container_data_dir: "{{ container_dir }}/data"
 
 ## Default names for self generated key and cert
 ssl_key_filename: "{{ ansible_hostname }}.key"
 ssl_cert_filename: "{{ ansible_hostname }}.crt"
-ssl_csr_filename: "{{ ansible_hostname }}.crt"
+ssl_csr_filename: "{{ ansible_hostname }}.csr"
 
 ## Full path to cert key and certificate
-ssl_cert_file: "{{ ssl_certs_source }}/{{ ssl_key_filename }}"
-ssl_key_file: "{{ ssl_certs_source }}/{{ ssl_cert_filename }}"
+ssl_cert_file: "{{ ssl_certs_source }}/{{ ssl_cert_filename }}"
+ssl_key_file: "{{ ssl_certs_source }}/{{ ssl_key_filename }}"
 ssl_csr_file: "{{ ssl_certs_source }}/{{ ssl_csr_filename }}"
 
 ## Should we generate a self signed cert?

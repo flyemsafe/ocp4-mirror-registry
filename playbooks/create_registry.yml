@@ -26,7 +26,6 @@
     block:
       - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
         openssl_privatekey:
-          #passphrase: "{{ registry_http_secret }}"
           path: "{{ ssl_key_file }}"
 
       - name: Generate an OpenSSL Certificate Signing Request
@@ -46,7 +45,6 @@
           path: "{{ ssl_cert_file }}"
           privatekey_path: "{{ ssl_key_file }}"
           csr_path: "{{ ssl_csr_file }}"
-          #privatekey_passphrase: "{{ registry_http_secret }}"
 
   - name: tasks requiring escalated privileges
     become: yes
@@ -57,7 +55,7 @@
           state: directory
           mode: '0755'
         loop:
-          - "{{ container_dir }}/data"
+          - "{{ container_data_dir }}"
           - "{{ container_dir }}/auth"
           - "{{ container_dir }}/certs"
           - "/etc/docker/certs.d/{{ ansible_fqdn }}"
@@ -91,7 +89,7 @@
 
       - name: install the required packages for the registry node
         yum:
-          name: "python3,podman,httpd,httpd-tools,jq"
+          name: "python3,podman,httpd,httpd-tools,jq,python3-bcrypt"
           state: installed
         when: container_state != 'absent'
 
@@ -105,14 +103,30 @@
 
       - name: create htpass user for registry container
         htpasswd:
+          state: present
           path: "{{ container_dir }}/auth/htpasswd"
-          name: "{{ registry_username }}"
+          username: "{{ registry_username }}"
           password: "{{ registry_password }}"
           mode: 0640
+          crypt_scheme: bcrypt
         when: container_state != 'absent'
 
       - name: force all notified handlers to run
         meta: flush_handlers
+
+      - name: Check if container registry is listening
+        uri:
+          url: "https://{{ ansible_fqdn }}:5000/v2/_catalog"
+          user: "{{ registry_username }}"
+          password: "{{ registry_password }}"
+          force_basic_auth: yes
+        register: container_registry_listen
+        ignore_errors: yes
+
+      - debug:
+          var: container_registry_listen
+
+#      - meta: end_play
 
       - name: Create and start or delete the registry container
         containers.podman.podman_container:
@@ -123,14 +137,14 @@
           ports:
               - "5000:5000"
           volume:
-            - "{{ container_dir }}/data:/var/lib/registry:z"
+            - "{{ container_data_dir }}:/var/lib/registry:z"
             - "{{ container_dir }}/auth:/auth:z"
             - "{{ container_dir }}/certs:/certs:z"
           env:
-              REGISTRY_AUTH: htpasswd
               REGISTRY_AUTH_HTPASSWD_REALM: Registry
+              REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+              REGISTRY_AUTH: htpasswd
               REGISTRY_HTTP_SECRET: "{{ registry_http_secret|default('Null') }}"
-              REGISTRY_AUTH_HTPASSWD_PATH: "/auth/htpasswd"
               REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/{{ ssl_cert_filename }}"
               REGISTRY_HTTP_TLS_KEY: "/certs/{{ ssl_key_filename }}"
 
@@ -140,6 +154,7 @@
           state: absent
         loop:
           - "{{ container_dir }}/certs"
+          - "{{ container_dir }}/auth"
           - "{{ update_trust_file_name }}"
           - "/etc/docker/certs.d/{{ ansible_fqdn }}"
         when: container_state == 'absent'
@@ -155,6 +170,7 @@
         debug:
           var: container_status.containers.0.State.Status
         when: container_state != 'absent'
+
 
 
   handlers:
