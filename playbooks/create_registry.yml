@@ -161,7 +161,9 @@
 
       - name: show container status
         debug:
-          msg: "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}"
+          msg:
+            - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}."
+            - "Access is via https://{{ ansible_fqdn }}:5000/v2/_catalog"
         when: container_state != 'absent'
 
 

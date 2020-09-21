@@ -6,7 +6,11 @@ Role to stand a OCP4 mirror registry
 A RHEL 8 host that's registered to Red Hat Subscription Management (RHSM) or Red Hat Satellite.
 
 ## Usage
-1. Clone the project to your ansible controller.
-2. Edit the CSR options in playbooks/vars/main.yml
-3. Download the required Ansible Collections with: ```ansible-galaxy collection install -r playbooks/requirements.yml```
-4. Run the playbook: ```ansible-playbook playbooks/create_registry.yml```
+* Clone or download the zip file of the project to your ansible controller
+* Default option is to generate self-signed certs.
+   * Edit the var `self_signed_certs_options` in playbooks/vars/main.yml
+* To provide your own certs:
+  * Edit the var `generate_self_signed_certs` in playbooks/vars/main.yml
+  * Edit the var `ssl_cert_file` and `ssl_key_file` in playbooks/vars/main.yml
+* Download the required Ansible Collections with: ```ansible-galaxy collection install -r playbooks/requirements.yml```
+* Run the playbook: ```ansible-playbook playbooks/create_registry.yml -i inventory/```
