@@ -11,9 +11,6 @@
     - containers.podman
 
   tasks:
-  - debug:
-      var: self_signed_certs_options
-
   - name: create random secret for container registry
     when: container_state != 'absent'
     vars:
@@ -120,20 +117,16 @@
           user: "{{ registry_username }}"
           password: "{{ registry_password }}"
           force_basic_auth: yes
+          validate_certs: no
         register: container_registry_listen
         ignore_errors: yes
 
-      - debug:
-          var: container_registry_listen
-
-#      - meta: end_play
-
       - name: Create and start or delete the registry container
+        #when: container_registry_listen.status != 200
         containers.podman.podman_container:
           name: ocp4-registry-mirror
           image: registry:2
           state: "{{ container_state }}"
-          restart: yes
           ports:
               - "5000:5000"
           volume:
@@ -168,7 +161,7 @@
 
       - name: show container status
         debug:
-          var: container_status.containers.0.State.Status
+          msg: "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}"
         when: container_state != 'absent'
 
 

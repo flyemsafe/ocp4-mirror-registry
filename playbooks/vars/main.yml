@@ -41,7 +41,7 @@ registry_username: regadmin
 registry_password: regadmin
 
 ## Set this option to absent to delete the registry container
-container_state: started
+container_state: present
 
 ## no need to change the below
 update_trust_file_name: /etc/pki/ca-trust/source/anchors/ca.crt
