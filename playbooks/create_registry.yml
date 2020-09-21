@@ -16,7 +16,7 @@
     vars:
       secret_file: "{{ playbook_dir }}/files/secret_file"
     set_fact:
-      registry_http_secret: "{{ lookup('password', secret_file, 'chars=ascii_letters,digits,hexdigits,punctuation length=28') }}"
+      registry_http_secret: "{{ lookup('password', secret_file + ' ' + 'chars=ascii_letters,digits,hexdigits,punctuation length=28') }}"
 
   - name: Create self signed certs
     when: generate_self_signed_certs|bool and container_state != 'absent'
