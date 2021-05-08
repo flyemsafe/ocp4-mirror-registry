@@ -109,6 +109,12 @@
       - name: force all notified handlers to run
         meta: flush_handlers
 
+  - name: install pip package bcrypt
+    pip:
+      name: bcrypt
+      extra_args: --user
+    when: container_state != 'absent'
+
   - name: create htpass user for registry container
     htpasswd:
       state: present
@@ -128,6 +134,7 @@
       owner: "{{ container_user }}"
       group: "{{ container_group }}"
       mode: 0644
+    when: container_state != 'absent'
   
   - name: ensure cert files are copied to the registry container cert directory
     copy:
