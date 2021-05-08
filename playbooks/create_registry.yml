@@ -53,9 +53,12 @@
         file:
           path: "{{ item }}"
           state: directory
-          mode: '0755'
+          mode: '0775'
+          owner: "{{ container_user }}"
+          group: "{{ container_admin }}"
         loop:
-          - "{{ container_data_dir }}"
+          - "{{ container_data_dir }}/data"
+          - "{{ container_data_dir }}/conf"
           - "{{ container_dir }}/auth"
           - "{{ container_dir }}/certs"
           - "/etc/containers/certs.d/{{ registry_fqdn }}"
@@ -67,15 +70,6 @@
           permanent: yes
           immediate: yes
           state: enabled
-        when: container_state != 'absent'
-
-      - name: ensure cert files are copied to the registry container cert directory
-        copy:
-          src: "{{ ssl_certs_source }}/{{ item }}"
-          dest: "{{ container_dir }}/certs/{{ item }}"
-        loop:
-          - "{{ ssl_key_filename }}"
-          - "{{ ssl_cert_filename }}"
         when: container_state != 'absent'
 
       - name: ensure cert files are copied to /etc/containers/certs.d
@@ -101,49 +95,6 @@
         notify:
           - Update the host with the generated self-signed certs
 
-      - name: create htpass user for registry container
-        htpasswd:
-          state: present
-          path: "{{ container_dir }}/auth/htpasswd"
-          username: "{{ registry_username }}"
-          password: "{{ registry_password }}"
-          mode: 0640
-          crypt_scheme: bcrypt
-        when: container_state != 'absent'
-
-      - name: force all notified handlers to run
-        meta: flush_handlers
-
-      - name: Check if container registry is listening
-        uri:
-          url: "https://{{ registry_fqdn }}:5000/v2/_catalog"
-          user: "{{ registry_username }}"
-          password: "{{ registry_password }}"
-          force_basic_auth: yes
-          validate_certs: no
-        register: container_registry_listen
-        ignore_errors: yes
-
-      - name: Create and start or delete the registry container
-        #when: container_registry_listen.status != 200
-        containers.podman.podman_container:
-          name: ocp4-registry-mirror
-          image: registry:2
-          state: "{{ container_state }}"
-          ports:
-              - "5000:5000"
-          volume:
-            - "{{ container_data_dir }}:/var/lib/registry:z"
-            - "{{ container_dir }}/auth:/auth:z"
-            - "{{ container_dir }}/certs:/certs:z"
-          env:
-              REGISTRY_AUTH_HTPASSWD_REALM: Registry
-              REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-              REGISTRY_AUTH: htpasswd
-              REGISTRY_HTTP_SECRET: "{{ registry_http_secret|default('Null') }}"
-              REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/{{ ssl_cert_filename }}"
-              REGISTRY_HTTP_TLS_KEY: "/certs/{{ ssl_key_filename }}"
-
       - name: Remove container registry certs
         file:
           path: "{{ item }}"
@@ -152,24 +103,87 @@
           - "{{ container_dir }}/certs"
           - "{{ container_dir }}/auth"
           - "{{ update_trust_file_name }}"
-          - "/etc/docker/certs.d/{{ registry_fqdn }}"
+          - "/etc/containers/certs.d/{{ registry_fqdn }}"
         when: container_state == 'absent'
 
-      - name: Get facts about the registry container
-        containers.podman.podman_container_info:
-          name:
-            - ocp4-registry-mirror
-        register: container_status
-        when: container_state != 'absent'
+      - name: force all notified handlers to run
+        meta: flush_handlers
 
-      - name: show container status
-        debug:
-          msg:
-            - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}."
-            - "Access is via https://{{ registry_fqdn }}:5000/v2/_catalog"
-        when: container_state != 'absent'
+  - name: create htpass user for registry container
+    htpasswd:
+      state: present
+      path: "{{ container_dir }}/auth/htpasswd"
+      username: "{{ registry_username }}"
+      password: "{{ registry_password }}"
+      owner: "{{ container_user }}"
+      group: "{{ container_admin }}"
+      mode: 0640
+      crypt_scheme: bcrypt
+    when: container_state != 'absent'
 
+  - name: deploy registry config
+    template: 
+      src: config.yml.j2
+      dest: "{{ container_dir }}/conf/config.yml"
+      owner: "{{ container_user }}"
+      group: "{{ container_admin }}"
+      mode: 0644
+  
+  - name: ensure cert files are copied to the registry container cert directory
+    copy:
+      src: "{{ ssl_certs_source }}/{{ item }}"
+      dest: "{{ container_dir }}/certs/{{ item }}"
+      owner: "{{ container_user }}"
+      group: "{{ container_admin }}"
+    loop:
+      - "{{ ssl_key_filename }}"
+      - "{{ ssl_cert_filename }}"
+    when: container_state != 'absent'
 
+  - name: Check if container registry is listening
+    uri:
+      url: "https://{{ registry_fqdn }}:5000/v2/_catalog"
+      user: "{{ registry_username }}"
+      password: "{{ registry_password }}"
+      force_basic_auth: yes
+      validate_certs: no
+    register: container_registry_listen
+    ignore_errors: yes
+
+  - name: Create and start or delete the registry container
+    #when: container_registry_listen.status != 200
+    containers.podman.podman_container:
+      name: ocp4-registry-mirror
+      image: registry:2
+      state: "{{ container_state }}"
+      ports:
+          - "5000:5000"
+      volume:
+        - "{{ container_data_dir }}/data:/var/lib/registry:z"
+        - "{{ container_dir }}/auth:/auth:z"
+        - "{{ container_dir }}/certs:/certs:z"
+        - "{{ container_dir }}/conf/config.yml:/etc/docker/registry/config.yml:z"
+      env:
+          REGISTRY_AUTH_HTPASSWD_REALM: Registry
+          REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+          REGISTRY_AUTH: htpasswd
+          REGISTRY_HTTP_SECRET: "{{ registry_http_secret|default('Null') }}"
+          REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/{{ ssl_cert_filename }}"
+          REGISTRY_HTTP_TLS_KEY: "/certs/{{ ssl_key_filename }}"
+
+  - name: Get facts about the registry container
+    containers.podman.podman_container_info:
+      name:
+        - ocp4-registry-mirror
+    register: container_status
+    when: container_state != 'absent'
+  
+  - name: show container status
+    debug:
+      msg:
+        - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}."
+        - "Access is via https://{{ registry_fqdn }}:5000/v2/_catalog"
+    when: container_state != 'absent'
 
   handlers:
   - name: Update the host with the generated self-signed certs
