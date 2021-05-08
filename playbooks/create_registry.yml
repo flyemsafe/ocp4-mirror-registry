@@ -111,9 +111,12 @@
 
   - name: install pip package bcrypt
     pip:
-      name: bcrypt
+      name: "{{ item }}"
       extra_args: --user
-    when: container_state != 'absent'
+      state: "{{ container_state }}"
+    loop:
+      - passlib
+      - bcrypt
 
   - name: create htpass user for registry container
     htpasswd:
