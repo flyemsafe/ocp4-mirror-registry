@@ -55,7 +55,7 @@
           state: directory
           mode: '0775'
           owner: "{{ container_user }}"
-          group: "{{ container_admin }}"
+          group: "{{ container_group }}"
         loop:
           - "{{ container_data_dir }}/data"
           - "{{ container_data_dir }}/conf"
@@ -116,7 +116,7 @@
       username: "{{ registry_username }}"
       password: "{{ registry_password }}"
       owner: "{{ container_user }}"
-      group: "{{ container_admin }}"
+      group: "{{ container_group }}"
       mode: 0640
       crypt_scheme: bcrypt
     when: container_state != 'absent'
@@ -126,7 +126,7 @@
       src: config.yml.j2
       dest: "{{ container_dir }}/conf/config.yml"
       owner: "{{ container_user }}"
-      group: "{{ container_admin }}"
+      group: "{{ container_group }}"
       mode: 0644
   
   - name: ensure cert files are copied to the registry container cert directory
@@ -134,7 +134,7 @@
       src: "{{ ssl_certs_source }}/{{ item }}"
       dest: "{{ container_dir }}/certs/{{ item }}"
       owner: "{{ container_user }}"
-      group: "{{ container_admin }}"
+      group: "{{ container_group }}"
     loop:
       - "{{ ssl_key_filename }}"
       - "{{ ssl_cert_filename }}"
