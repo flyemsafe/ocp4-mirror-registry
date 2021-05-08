@@ -113,10 +113,19 @@
     pip:
       name: "{{ item }}"
       extra_args: --user
+    loop:
+      - passlib
+      - bcrypt
+    when: container_state != 'absent'
+
+  - name: remove pip packages
+    pip:
+      name: "{{ item }}"
       state: "{{ container_state }}"
     loop:
       - passlib
       - bcrypt
+    when: container_state == 'absent'
 
   - name: create htpass user for registry container
     htpasswd:
@@ -169,7 +178,7 @@
       ports:
           - "5000:5000"
       volume:
-        - "{{ container_data_dir }}/data:/var/lib/registry:z"
+        - "{{ container_data_dir }}:/var/lib/registry:z"
         - "{{ container_dir }}/auth:/auth:z"
         - "{{ container_dir }}/certs:/certs:z"
         - "{{ container_dir }}/conf/config.yml:/etc/docker/registry/config.yml:z"
