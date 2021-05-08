@@ -83,7 +83,7 @@
 
       - name: install the required packages for the registry node
         yum:
-          name: "python3,podman,httpd,httpd-tools,jq,python3-bcrypt"
+          name: "python3,podman,httpd,httpd-tools,jq"
           state: installed
         when: container_state != 'absent'
 
