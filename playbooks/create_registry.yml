@@ -57,8 +57,8 @@
           owner: "{{ container_user }}"
           group: "{{ container_group }}"
         loop:
-          - "{{ container_data_dir }}/data"
-          - "{{ container_data_dir }}/conf"
+          - "{{ container_data_dir }}"
+          - "{{ container_dir }}/conf"
           - "{{ container_dir }}/auth"
           - "{{ container_dir }}/certs"
           - "/etc/containers/certs.d/{{ registry_fqdn }}"
@@ -109,7 +109,7 @@
       - name: force all notified handlers to run
         meta: flush_handlers
 
-  - name: install pip package bcrypt
+  - name: install pip packages
     pip:
       name: "{{ item }}"
       extra_args: --user
