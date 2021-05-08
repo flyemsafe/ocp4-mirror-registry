@@ -51,7 +51,7 @@ self_signed_certs_options:
     cert_org_name: "Qubinode"
     cert_org_unit: "Lab"
     cert_common_name: "{{ registry_fqdn }}"
-    cert_subject_alt_name: "SAN=DNS:{{ registry_fqdn }},IP:{{ registry_ip }}"
+    cert_subject_alt_name: "DNS:{{ registry_fqdn }},IP:{{ registry_ip }}"
 
 ## we use htpasswd to setup user to access the registry container
 registry_username: regadmin
