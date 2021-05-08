@@ -2,7 +2,7 @@
 ## Where to find your cert and cert key
 ssl_certs_source: "{{ playbook_dir }}/files"
 
-## location for the container peristant storage
+## location for the container persistent storage
 ## this location should have at least 8G of
 ## available storage or you can specify a
 ## different path for the data dir with
@@ -27,14 +27,27 @@ ssl_csr_file: "{{ ssl_certs_source }}/{{ ssl_csr_filename }}"
 ## make sure to provide the ssl_cert_filename and ssl_cert_file
 generate_self_signed_certs: yes
 
+## Registry FQDN
+registry_domain: lab.qubinode.io
+
+## Registry hostname
+registry_hostname: registry
+
+## Registry IP address
+registry_ip: 192.168.8.9
+
+## Registry FQDN
+registry_fqdn: "{{ registry_hostname }}.{{ registry_domain }}"
+
 ## Options to for CSR
 self_signed_certs_options:
     cert_country: "US"
     cert_state: "FL"
     cert_locality: "Orange"
-    cert_org_name: "Lab"
-    cert_org_unit: "Office"
-    cert_common_name: "{{ ansible_fqdn }}"
+    cert_org_name: "Qubinode"
+    cert_org_unit: "Lab"
+    cert_common_name: "{{ registry_fqdn }}"
+    cert_subject_alt_name: "SAN=DNS:{{ registry_fqdn }},IP:{{ registry_ip }}"
 
 ## we use htpasswd to setup user to access the registry container
 registry_username: regadmin

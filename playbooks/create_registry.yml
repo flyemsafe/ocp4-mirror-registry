@@ -17,9 +17,11 @@
       secret_file: "{{ playbook_dir }}/files/secret_file"
     set_fact:
       registry_http_secret: "{{ lookup('password', secret_file + ' ' + 'chars=ascii_letters,digits,hexdigits,punctuation length=28') }}"
+    tags: registry
 
   - name: Create self signed certs
     when: generate_self_signed_certs|bool and container_state != 'absent'
+    tags: create_self_signed_cert
     block:
       - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
         openssl_privatekey:
@@ -35,6 +37,7 @@
           organization_name: "{{ self_signed_certs_options.cert_org_name }}"
           organizational_unit_name: "{{ self_signed_certs_options.cert_org_unit }}"
           state_or_province_name: "{{ self_signed_certs_options.cert_state }}"
+          subject_alt_name: "{{ self_signed_certs_options.cert_subject_alt_name }}"
 
       - name: Generate certificate
         openssl_certificate:
@@ -55,7 +58,7 @@
           - "{{ container_data_dir }}"
           - "{{ container_dir }}/auth"
           - "{{ container_dir }}/certs"
-          - "/etc/docker/certs.d/{{ ansible_fqdn }}"
+          - "/etc/containers/certs.d/{{ registry_fqdn }}"
         when: container_state != 'absent'
 
       - name: open ports for registry
@@ -66,7 +69,7 @@
           state: enabled
         when: container_state != 'absent'
 
-      - name: ensure cert files are copied to the register container cert directory
+      - name: ensure cert files are copied to the registry container cert directory
         copy:
           src: "{{ ssl_certs_source }}/{{ item }}"
           dest: "{{ container_dir }}/certs/{{ item }}"
@@ -75,10 +78,10 @@
           - "{{ ssl_cert_filename }}"
         when: container_state != 'absent'
 
-      - name: ensure cert files are copied to /etc/docker/certs.d
+      - name: ensure cert files are copied to /etc/containers/certs.d
         copy:
           src: "{{ ssl_certs_source }}/{{ item }}"
-          dest: "/etc/docker/certs.d/{{ ansible_fqdn }}/{{ item }}"
+          dest: "/etc/containers/certs.d/{{ registry_fqdn }}/{{ item }}"
         loop:
           - "{{ ssl_key_filename }}"
           - "{{ ssl_cert_filename }}"
@@ -113,7 +116,7 @@
 
       - name: Check if container registry is listening
         uri:
-          url: "https://{{ ansible_fqdn }}:5000/v2/_catalog"
+          url: "https://{{ registry_fqdn }}:5000/v2/_catalog"
           user: "{{ registry_username }}"
           password: "{{ registry_password }}"
           force_basic_auth: yes
@@ -149,7 +152,7 @@
           - "{{ container_dir }}/certs"
           - "{{ container_dir }}/auth"
           - "{{ update_trust_file_name }}"
-          - "/etc/docker/certs.d/{{ ansible_fqdn }}"
+          - "/etc/docker/certs.d/{{ registry_fqdn }}"
         when: container_state == 'absent'
 
       - name: Get facts about the registry container
@@ -163,7 +166,7 @@
         debug:
           msg:
             - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}."
-            - "Access is via https://{{ ansible_fqdn }}:5000/v2/_catalog"
+            - "Access is via https://{{ registry_fqdn }}:5000/v2/_catalog"
         when: container_state != 'absent'
 
 
