@@ -39,6 +39,10 @@ registry_ip: 192.168.8.9
 ## Registry FQDN
 registry_fqdn: "{{ registry_hostname }}.{{ registry_domain }}"
 
+## user and group to own the container_dir
+container_user: admin
+container_group: admin
+
 ## Options to for CSR
 self_signed_certs_options:
     cert_country: "US"
