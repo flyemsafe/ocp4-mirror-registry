@@ -22,6 +22,9 @@ ssl_cert_file: "{{ ssl_certs_source }}/{{ ssl_cert_filename }}"
 ssl_key_file: "{{ ssl_certs_source }}/{{ ssl_key_filename }}"
 ssl_csr_file: "{{ ssl_certs_source }}/{{ ssl_csr_filename }}"
 
+## Podman container certs.d
+containers_certs_d: "/etc/containers/certs.d/{{ registry_fqdn }}:{{ registry_port }}"
+
 ## Should we generate a self signed cert?
 ## no - if you are providing your own otherwise - yes
 ## make sure to provide the ssl_cert_filename and ssl_cert_file
@@ -38,6 +41,22 @@ registry_ip: 192.168.8.9
 
 ## Registry FQDN
 registry_fqdn: "{{ registry_hostname }}.{{ registry_domain }}"
+
+## Port to expose the registry on
+registry_port: 5000
+
+## Local registry auth file
+registry_local_auth: "WOmpBat"
+
+## OpenShift pull-secret
+pull_secret: "/home/admin/qubinode-installer/pull-secret.txt"
+
+## Generated pull-secret.json path
+generated_pull_secret: "/home/admin/qubinode-installer/generated_pullsecret.json"
+
+## additional_trust_bundle
+additional_trust_bundle: /home/admin/qubinode-installer/trust-bundle.txt
+image_content_sources: /home/admin/qubinode-installer//content-sources.txt
 
 ## user and group to own the container_dir
 container_user: admin
@@ -61,4 +80,4 @@ registry_password: regadmin
 container_state: present
 
 ## no need to change the below
-update_trust_file_name: /etc/pki/ca-trust/source/anchors/ca.crt
+update_trust_file_name: "/etc/pki/ca-trust/source/anchors/{{ registry_hostname }}.crt"

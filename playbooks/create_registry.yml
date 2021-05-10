@@ -61,25 +61,33 @@
           - "{{ container_dir }}/conf"
           - "{{ container_dir }}/auth"
           - "{{ container_dir }}/certs"
-          - "/etc/containers/certs.d/{{ registry_fqdn }}"
+          - "{{ containers_certs_d }}"
         when: container_state != 'absent'
 
       - name: open ports for registry
         firewalld:
-          port: 5000/tcp
+          port: "{{ registry_port }}/tcp"
           permanent: yes
           immediate: yes
           state: enabled
         when: container_state != 'absent'
 
-      - name: ensure cert files are copied to /etc/containers/certs.d
+      - name: ensure cert files are copied to {{ containers_certs_d }}
         copy:
           src: "{{ ssl_certs_source }}/{{ item }}"
-          dest: "/etc/containers/certs.d/{{ registry_fqdn }}/{{ item }}"
+          dest: "{{ containers_certs_d }}/{{ item }}"
+          mode: 0644
         loop:
           - "{{ ssl_key_filename }}"
           - "{{ ssl_cert_filename }}"
         when: container_state != 'absent'
+
+      - name: renamed {{ ssl_cert_filename }} to have cert suffix
+        copy:
+          src: "{{ ssl_cert_file }}"
+          dest: "{{ containers_certs_d }}/{{ registry_hostname }}.cert"
+          mode: 0644
+        ignore_errors: yes
 
       - name: install the required packages for the registry node
         yum:
@@ -103,8 +111,10 @@
           - "{{ container_dir }}/certs"
           - "{{ container_dir }}/auth"
           - "{{ update_trust_file_name }}"
-          - "/etc/containers/certs.d/{{ registry_fqdn }}"
+          - "{{ containers_certs_d }}"
         when: container_state == 'absent'
+        notify:
+          - Update the host with the generated self-signed certs
 
       - name: force all notified handlers to run
         meta: flush_handlers
@@ -161,7 +171,7 @@
 
   - name: Check if container registry is listening
     uri:
-      url: "https://{{ registry_fqdn }}:5000/v2/_catalog"
+      url: "https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
       user: "{{ registry_username }}"
       password: "{{ registry_password }}"
       force_basic_auth: yes
@@ -176,7 +186,7 @@
       image: registry:2
       state: "{{ container_state }}"
       ports:
-          - "5000:5000"
+          - "{{ registry_port }}:{{ registry_port }}"
       volume:
         - "{{ container_data_dir }}:/var/lib/registry:z"
         - "{{ container_dir }}/auth:/auth:z"
@@ -201,7 +211,7 @@
     debug:
       msg:
         - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}."
-        - "Access is via https://{{ registry_fqdn }}:5000/v2/_catalog"
+        - "Access is via https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
     when: container_state != 'absent'
 
   handlers:

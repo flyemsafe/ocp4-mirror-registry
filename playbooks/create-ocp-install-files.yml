@@ -1,0 +1,52 @@
+---
+- name: Generate required files
+  hosts: localhost
+  gather_facts: yes
+  become: no
+
+  vars_files:
+    vars/main.yml
+
+  tasks:
+  - name: encode local registry credentials to base64
+    shell: echo -n '{{ registry_username }}:{{ registry_password }}' | base64 -w0
+    register: registry_auth
+  
+  - name: declare registry_local_auth var
+    set_fact:
+      registry_local_auth: "{{ registry_auth.stdout }}"
+
+  - name: create a temp local registry auth file
+    tempfile:
+      state: file
+      suffix: json
+    register: temp_config
+  
+  - name: generate temp local auth
+    template:
+      src: templates/local_registry_auth.json.j2
+      dest: "{{ temp_config.path }}"
+  
+  - name: add local registry auth file to pullsecret
+    shell: >
+      jq -s '{"auths": ( .[0].auths + .[1].auths ) }' {{ temp_config.path }} {{ pull_secret }} > {{ generated_pull_secret }}
+
+  - name: create trust-bundle.txt file 
+    template:
+      src: templates/trust-bundle.txt.j2
+      dest: "{{ additional_trust_bundle }}"
+
+  - name: create content-sources.txt file 
+    template:
+      src: templates/content-sources.txt.j2
+      dest: "{{ image_content_sources }}"
+
+  - name: update additional_trust_bundle with two spaces at start of each line
+    replace:
+      path: "{{ additional_trust_bundle }}"
+      regexp: '^'
+      replace: '  '
+
+  - name: login into local registry
+    shell: podman login {{ registry_fqdn }}:{{ registry_port }} --authfile {{ generated_pull_secret }}
+    register: podman_login
