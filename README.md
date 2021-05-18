@@ -1,16 +1,41 @@
 # ocp4-mirror-registry
-Role to stand a OCP4 mirror registry
 
-## Requirements
+The the goal of this project is to deploy two types registries to support OCP installation.
 
-A RHEL 8 host that's registered to Red Hat Subscription Management (RHSM) or Red Hat Satellite.
+1. Pull-through caching registry 
+2. Mirror registry 
 
-## Usage
-* Clone or download the zip file of the project to your ansible controller
-* Default option is to generate self-signed certs.
-   * Edit the var `self_signed_certs_options` in playbooks/vars/main.yml
-* To provide your own certs:
-  * Edit the var `generate_self_signed_certs` in playbooks/vars/main.yml
-  * Edit the var `ssl_cert_file` and `ssl_key_file` in playbooks/vars/main.yml
-* Download the required Ansible Collections with: ```ansible-galaxy collection install -r playbooks/requirements.yml```
-* Run the playbook: ```ansible-playbook playbooks/create_registry.yml -i inventory/```
+## Pull-through caching registry
+
+This will create a podman docker registry for each of the following OpenShift registry URLs:
+   - https://cloud.openshift.com
+   - https://cdn02.quay.io
+   - https://quay.io'
+   - https://registry.connect.redhat.com
+   - https://registry.svc.ci.openshift.org
+   - https://registry.redhat.io
+
+
+### Steps to get started
+
+After cloning this project.
+
+* Generate the registries vars file
+
+```
+bash scripts/generate-registry-proxies.sh your-openshift-pull-secret > playbooks/vars/registries.yml
+```
+
+* Review the vars file
+
+`playbooks/roles/ocp4-mirror-registry/vars/main.yml`
+
+You can edit that file directly or add your overrides to `playbooks/vars/registries.yml`.
+
+* Run the ansible playbook
+
+```
+ansible-playbook playbooks/deploy-mirror-registry.yml
+```
+
+## Mirror registry

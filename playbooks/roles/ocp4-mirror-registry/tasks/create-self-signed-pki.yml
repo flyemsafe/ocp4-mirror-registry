@@ -29,19 +29,19 @@
         creates: "{{ ssl_ca_crt_file }}"
       register: root_ca_cert
 
-- name: Create the registry cert
+- name: registries.yml - Create the registry cert
   when: create_registry_cert
   tags: [registry_cert, ssl_certs, deploy_registry]
   block:   
     # Create registry cert
-    - name: create registry signing private key
+    - name: registries.yml - create registry signing private key
       shell: >
          openssl genrsa -out {{ ssl_key_file }} 2048
       args:
         creates: "{{ ssl_key_file }}"
       register: registry_csr_private_key
     
-    - name: Create a signing csr for {{ registry_fqdn }}
+    - name: registries.yml - Create a signing csr for {{ registry_fqdn }}
       vars:
         openssl_cmd_prefix: 'openssl req -new -sha256'
       shell: >
@@ -50,7 +50,7 @@
         creates: "{{ ssl_csr_file }}"
       register: registry_csr
   
-    - name: Create a certificate for {{ registry_fqdn }}
+    - name: registries.yml - Create a certificate for {{ registry_fqdn }}
       vars:
         openssl_cmd_prefix: 'openssl x509 -req'
       shell: >
@@ -59,7 +59,7 @@
         creates: "{{ ssl_cert_file }}"
       register: registry_csr
 
-- name: copy self-signed cert to /etc/pki/ca-trust/source/anchors
+- name: registries.yml - copy self-signed cert to /etc/pki/ca-trust/source/anchors
   become: yes
   copy:
     src: "{{ ssl_cert_file }}"
@@ -67,13 +67,13 @@
   register: add_cert_to_trust
   tags: [update_trust, ssl_certs, deploy_registry]
 
-- name: Update the host with the trust with the self-signed certs
+- name: registries.yml - Update the host with the trust with the self-signed certs
   when: add_cert_to_trust.changed
   shell: update-ca-trust
   become: yes
   tags: [update_trust, ssl_certs, deploy_registry]
 
-- name: validate the host trusts
+- name: registries.yml - validate the host trusts
   tags: [update_trust, ssl_certs, deploy_registry]
   block:
     - name: run openssl verify -CAfile /etc/pki/tls/cert.pem {{ ssl_cert_file }}
@@ -83,4 +83,3 @@
     - name: Host does not trust {{ registry_fqdn }}
       debug:
         var: validate_trust.stdout
-

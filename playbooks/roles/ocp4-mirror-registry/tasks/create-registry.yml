@@ -11,8 +11,6 @@
         owner: "{{ container_user }}"
         group: "{{ container_group }}"
       loop:
-        - "{{ container_data_dir }}"
-        - "{{ container_dir }}/conf"
         - "{{ container_dir }}/auth"
         - "{{ container_dir }}/certs"
         - "{{ containers_certs_d }}"
@@ -75,76 +73,12 @@
     crypt_scheme: bcrypt
   tags: [setup_htpasswd, deploy_registry]
 
-- name: include registry proxy vars
-  include_vars: /tmp/result.yml
-  tags: [registry, deploy_registry, registry_config]
-
-- name: deploy registry config
-  template: 
-    src: config.yml.j2
-    dest: "{{ container_dir }}/conf/config.yml"
-    owner: "{{ container_user }}"
-    group: "{{ container_group }}"
-    mode: 0644
-  tags: [registry, deploy_registry, registry_config]
-
-- name: Check if container registry is listening
-  uri:
-    url: "https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
-    user: "{{ registry_username }}"
-    password: "{{ registry_password }}"
-    force_basic_auth: yes
-    validate_certs: no
-  register: container_registry_listen
-  ignore_errors: yes
-  tags: [registry, deploy_registry]
-
-- name: Create and start or delete the registry container
-  become: yes
-  containers.podman.podman_container:
-    name: ocp4-registry-mirror
-    image: registry:2.7.1
-    state: "{{ container_state }}"
-    ports:
-        - "{{ registry_port }}:{{ registry_port }}"
-    volume:
-      - "{{ container_data_dir }}:/registry:z"
-      - "{{ container_dir }}/auth:/auth:z"
-      - "{{ container_dir }}/certs:/certs:z"
-      - "{{ container_dir }}/conf/config.yml:/etc/docker/registry/config.yml:z"
-    env:
-       REGISTRY_AUTH_HTPASSWD_REALM: Registry
-       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
-       REGISTRY_AUTH: htpasswd
-       REGISTRY_HTTP_SECRET: "{{ registry_http_secret }}"
-       #REGISTRY_HTTP_SECRET: "]c4Ict<cg.;w1TlVC6^m&ZNODfZ$"
-       REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/{{ ssl_cert_filename }}"
-       REGISTRY_HTTP_TLS_KEY: "/certs/{{ ssl_key_filename }}"
-       REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
+## Future task is to put this all into a single pod
+## with something like nginx or haproxy
+- name: create-registry.yml - Deploy registry containers
+  include_tasks: registries.yml
+  loop: "{{ registry_pods }}"
+  loop_control:
+    loop_var: outer_item
+    label: outer_item.name
   tags: [ registry_container_state, container, registry, deploy_registry ]
-  
-- name: Get facts about the registry container
-  become: yes
-  containers.podman.podman_container_info:
-    name:
-      - ocp4-registry-mirror
-  register: container_status
-  tags: [ registry_container_state, container, registry, deploy_registry ]
-
-- name: show container status
-  debug:
-    msg: >
-      - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}"
-      - "Access is via https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
-  tags: [ registry_container_state, container, registry, deploy_registry ]
-
-
-   
-- name: deploy registry config
-  template: 
-    src: podman-run.txt.j2
-    dest: /tmp/podman-run.txt
-    owner: "{{ container_user }}"
-    group: "{{ container_group }}"
-    mode: 0644
-  tags: [registry, deploy_registry]

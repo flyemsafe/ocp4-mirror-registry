@@ -18,15 +18,16 @@ create_registry_cert: true
 container_dir: "/opt/containers/registry"
 
 ## data directory for mirrored content storage location
+## TODO: remove this var
 container_data_dir: "{{ container_dir }}/data"
 
 ## SSL config
 ssl_config_file: "{{ ssl_certs_source }}/openssl.cnf"
 
 ## Default names for self generated key and cert
-ssl_key_filename: "{{ registry_fqdn }}.key"
-ssl_cert_filename: "{{ registry_fqdn }}.crt"
-ssl_csr_filename: "{{ registry_fqdn }}.csr"
+ssl_key_filename: "registry.{{ registry_domain }}.key"
+ssl_cert_filename: "registry.{{ registry_domain }}.crt"
+ssl_csr_filename: "registry.{{ registry_domain }}.csr"
 
 ssl_cert_file: "{{ ssl_certs_source }}/{{ ssl_cert_filename }}"
 ssl_key_file: "{{ ssl_certs_source }}/{{ ssl_key_filename }}"
@@ -69,18 +70,37 @@ registry_port: 5000
 registry_local_auth: "WOmpBat"
 
 ## Registry dict
-registries:
-  - name: registry_quay
-    port: 5000
-    url:
-    config_dir:
-    data_dir:
-  - name: registry_svc
-    port: 5001
-    url:
-  - name: registry_redhat
-    port: 5002
-    url:  
+registry_pods:
+  - name: reg-cloud-ocp
+    remoteurl: 'https://cloud.openshift.com'
+    username: ''
+    password: ''
+    port: '5000'
+  - name: reg-quay
+    remoteurl: 'https://quay.io'
+    username: ''
+    password: ''
+    port: '5001'
+  - name: reg-connect-rh
+    remoteurl: 'https://registry.connect.redhat.com'
+    username: ''
+    password: ''
+    port: '5002'
+  - name: reg-redhat
+    remoteurl: 'https://registry.redhat.io'
+    username: ''
+    password: ''
+    port: '5003'
+  - name: reg-quay-cdn
+    remoteurl: 'https://cdn02.quay.io'
+    username: ''
+    password: ''
+    port: '5004'
+  - name: reg-svc
+    remoteurl: 'https://registry.svc.ci.openshift.org'
+    username: ''
+    password: ''
+    port: '5005'
 
 
 ## OpenShift pull-secret

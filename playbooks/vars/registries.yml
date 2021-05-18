@@ -1,0 +1,22 @@
+---
+registry_pods:
+  - name: reg-cloud-ocp
+    remoteurl: 'https://cloud.openshift.com'
+    username: ''
+    password: ''
+    port: '5000'
+  - name: reg-quay
+    remoteurl: 'https://quay.io'
+    username: ''
+    password: ''
+    port: '5001'
+  - name: reg-connect-rh
+    remoteurl: 'https://registry.connect.redhat.com'
+    username: ''
+    password: ''
+    port: '5002'
+  - name: reg-redhat
+    remoteurl: 'https://registry.redhat.io'
+    username: ''
+    password: ''
+    port: '5003'

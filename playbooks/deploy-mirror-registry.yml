@@ -1,0 +1,13 @@
+- name: create a self-signed pki and registry certs
+  hosts: localhost
+  gather_facts: yes
+  become: no
+
+  vars_files:
+    - vars/registries.yml
+
+
+  tasks:
+  - name: create required self-signed certs
+    import_role:
+      name: ocp4-mirror-registry

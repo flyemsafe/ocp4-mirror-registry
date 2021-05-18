@@ -8,7 +8,7 @@ storage:
   filesystem:
     rootdirectory: /var/lib/registry
 http:
-  addr: :5000
+  addr: :{{ registry_port }}
   headers:
     X-Content-Type-Options: [nosniff]
 health:
@@ -17,11 +17,9 @@ health:
     interval: 10s
     threshold: 3
 proxy:
-{% for item in proxy_configs %}
-  remoteurl: {{ item.remoteurl|e }}
-  username: '{{ item.username|e }}'
-  password: '{{ item.password|e }}'
-{% endfor -%}   
+  remoteurl: {{ registry_url }}
+  username: '{{ registry_username }}'
+  password: '{{ registry_password }}'
 compatibility:
   schema1:
     enabled: true

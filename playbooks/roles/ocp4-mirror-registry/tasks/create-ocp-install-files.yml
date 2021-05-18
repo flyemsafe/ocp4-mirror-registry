@@ -2,32 +2,35 @@
 - name: encode local registry credentials to base64
   shell: echo -n '{{ registry_username }}:{{ registry_password }}' | base64 -w0
   register: registry_auth
-  tags: pullsecret
+  tags: [setup_htpasswd, deploy_registry, pullsecret]
 
-- name: declare registry_local_auth var
+- name: Declare the local registries username and password auth var
   set_fact:
     registry_local_auth: "{{ registry_auth.stdout }}"
-  tags: pullsecret
+  tags: [setup_htpasswd, deploy_registry, pullsecret]
 
 - name: create a temp local registry auth file
   tempfile:
     state: file
     suffix: json
   register: temp_config
-  tags: pullsecret
+  tags: [setup_htpasswd, deploy_registry, pullsecret]
 
-- name: generate temp local auth
+- name: registries.yml - generate the registry auth file
+  vars:
+    registry_fqdn: "{{ item.name }}"
+    registry_port: "{{ item.port }}"
   template:
     src: templates/local_registry_auth.json.j2
     dest: "{{ temp_config.path }}"
-  tags: pullsecret
+  tags: [setup_htpasswd, deploy_registry, pullsecret]
 
-- name: add local registry auth file to pullsecret
+- name: registries.yml - merge the openshift pull scecret with the local registry auth
   shell: >
     jq -s '{"auths": ( .[0].auths + .[1].auths ) }' {{ temp_config.path }} {{ pull_secret }} > {{ generated_pull_secret }}
   register: new_pull_secret
   tags: pullsecret
-
+  
 - name: create trust-bundle.txt file 
   template:
     src: templates/trust-bundle.txt.j2
@@ -77,3 +80,50 @@
 
 #podman login registry.lab.qubinode.io:5000 --get-login
 #Error: not logged into registry.lab.qubinode.io:5000
+
+
+
+
+#content_sources:
+#  - name: reg-quay
+#    port: '5001'
+#    url: quay.io/openshift-release-dev
+#    sources:
+#      - ocp-release
+#      - ocp-v4.0-art-dev
+#  - name: reg-redhat
+#    port: '5002'
+#    url: registry.redhat.io
+#    sources:
+#      - openshift4
+#      - registry_redhatcontainer-native-virtualization
+#      - registry_redhatocs4
+#      - registry_redhatredhat
+#      - registry_redhatrhceph
+#      - registry_redhatrhscl
+#  - name: reg-svc
+#    port: '5004'
+#    url: registry.svc.ci.openshift.org/ocp
+#    sources:
+#      - release
+#  - name: reg-quay-cdn
+#    port: '5005'
+#    url: cdn02.quay.io/openshift-release-dev
+#    sources:
+#      - ocp-release
+#      - ocp-v4.0-art-dev
+#
+#DNS.1 = reg-cloud-ocp.{{ registry_domain }}
+#DNS.2 = reg-connect-rh.{{ registry_domain }}
+#DNS.3 = registry.{{ registry_domain }}
+#DNS.4 = reg-quay.{{ registry_domain }}
+#DNS.5 = reg-redhat.{{ registry_domain }}
+#DNS.6 = registry.{{ registry_domain }}
+#
+#quay.io
+#registry.svc.ci.openshift.org
+#cdn02.quay.io
+#registry.redhat.io
+#
+#
+#registry.lasthome.solace.krynn:5000
