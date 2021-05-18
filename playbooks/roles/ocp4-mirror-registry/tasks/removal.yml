@@ -9,7 +9,7 @@
   tags: remove_packages
 
 - name: removal.yml - remove the registries
-  include_tasks: remove-registries.yml
+  include_tasks: remove-registry.yml
   loop: "{{ registry_pods }}"
   loop_control:
     loop_var: outer_item
