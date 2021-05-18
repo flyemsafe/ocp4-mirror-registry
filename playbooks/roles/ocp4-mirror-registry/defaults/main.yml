@@ -57,7 +57,7 @@ registry_domain: lab.qubinode.io
 ## Registry hostname
 registry_hostname: registry
 
-## Registry IP address
+## Registry IP address - Usually the ip address for the podman host
 registry_ip: 192.168.8.9
 
 ## Registry FQDN
@@ -66,8 +66,6 @@ registry_fqdn: "{{ registry_hostname }}.{{ registry_domain }}"
 ## Port to expose the registry on
 registry_port: 5000
 
-## Local registry auth file
-registry_local_auth: "WOmpBat"
 
 ## Registry dict
 registry_pods:
@@ -103,13 +101,13 @@ registry_pods:
     port: '5005'
 
 
-## OpenShift pull-secret
+## OpenShift pull-secret - path to your pull secret
 pull_secret: "/home/admin/qubinode-installer/pull-secret.json"
 
-## Generated pull-secret.json path
+## Where to output the generated pull-secret.json
 generated_pull_secret: "/home/admin/qubinode-installer/generated_pullsecret.json"
 
-## additional_trust_bundle
+## Where to output your generated trust-bundle and content-sources
 additional_trust_bundle: /home/admin/qubinode-installer/trust-bundle.txt
 image_content_sources: /home/admin/qubinode-installer//content-sources.txt
 
