@@ -1,0 +1,79 @@
+---
+- name: encode local registry credentials to base64
+  shell: echo -n '{{ registry_username }}:{{ registry_password }}' | base64 -w0
+  register: registry_auth
+  tags: pullsecret
+
+- name: declare registry_local_auth var
+  set_fact:
+    registry_local_auth: "{{ registry_auth.stdout }}"
+  tags: pullsecret
+
+- name: create a temp local registry auth file
+  tempfile:
+    state: file
+    suffix: json
+  register: temp_config
+  tags: pullsecret
+
+- name: generate temp local auth
+  template:
+    src: templates/local_registry_auth.json.j2
+    dest: "{{ temp_config.path }}"
+  tags: pullsecret
+
+- name: add local registry auth file to pullsecret
+  shell: >
+    jq -s '{"auths": ( .[0].auths + .[1].auths ) }' {{ temp_config.path }} {{ pull_secret }} > {{ generated_pull_secret }}
+  register: new_pull_secret
+  tags: pullsecret
+
+- name: create trust-bundle.txt file 
+  template:
+    src: templates/trust-bundle.txt.j2
+    dest: "{{ additional_trust_bundle }}"
+  tags: trust_file
+
+- name: update additional_trust_bundle with two spaces at start of each line
+  replace:
+    path: "{{ additional_trust_bundle }}"
+    regexp: '^'
+    replace: '  '
+  tags: trust_file
+
+- name: create content-sources.txt file 
+  template:
+    src: templates/content-sources.txt.j2
+    dest: "{{ image_content_sources }}"
+  tags: content_sources
+
+#- name: check login for {{ registry_fqdn }}:{{ registry_port }}
+#  shell: podman login {{ registry_fqdn }}:{{ registry_port }} --get-login
+#  register: podman_get_login
+#  ignore_errors: yes
+#  tags: registry_login
+#
+#- name: show debug
+#  when: podman_get_login.rc != 0
+#  debug:
+#    var: podman_get_login
+#  tags: registry_login
+#
+#- name: logout of registry {{ registry_fqdn }}:{{ registry_port }}
+#  when: podman_get_login.rc != 0
+#  shell: podman logout {{ registry_fqdn }}:{{ registry_port }} --authfile {{ generated_pull_secret }}
+#  register: podman_logout
+#  ignore_errors: yes
+#  tags: registry_login
+#
+#- name: login into local registry
+#  when: podman_get_login.rc != 0
+#  shell: podman login {{ registry_fqdn }}:{{ registry_port }} --authfile {{ generated_pull_secret }}
+#  register: podman_login
+#  tags: registry_login
+
+
+#podman login registry.lab.qubinode.io:5000 --authfile /home/admin/qubinode-installer/generated_pullsecret.json --username regadmin --password regadmin
+
+#podman login registry.lab.qubinode.io:5000 --get-login
+#Error: not logged into registry.lab.qubinode.io:5000

@@ -1,0 +1,86 @@
+---
+- name: deploy registry config
+  template: 
+    src: openssl.cnf.j2
+    dest: "{{ ssl_config_file }}"
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+    mode: 0644
+  tags: [ssl_config, ssl_certs, deploy_registry]
+
+- name: Create self-signed root CA
+  when: create_root_ca
+  tags: [root_ca, ssl_certs, deploy_registry]
+  block:
+    # Create ROOT CA
+    - name: create Root CA private key
+      shell: >
+         openssl genrsa -out {{ ssl_ca_key_file }} 4096
+      args:
+        creates: "{{ ssl_ca_key_file }}"
+      register: root_ca_private_key
+  
+    - name: create and self-sign the Root CA cert
+      vars:
+        openssl_cmd_prefix: 'openssl req -x509 -new -nodes -key'
+      shell: >
+         {{ openssl_cmd_prefix }} {{ ssl_ca_key_file }} -sha256 -days 1024 -out {{ ssl_ca_crt_file }} -config {{ ssl_config_file }}
+      args:
+        creates: "{{ ssl_ca_crt_file }}"
+      register: root_ca_cert
+
+- name: Create the registry cert
+  when: create_registry_cert
+  tags: [registry_cert, ssl_certs, deploy_registry]
+  block:   
+    # Create registry cert
+    - name: create registry signing private key
+      shell: >
+         openssl genrsa -out {{ ssl_key_file }} 2048
+      args:
+        creates: "{{ ssl_key_file }}"
+      register: registry_csr_private_key
+    
+    - name: Create a signing csr for {{ registry_fqdn }}
+      vars:
+        openssl_cmd_prefix: 'openssl req -new -sha256'
+      shell: >
+        {{ openssl_cmd_prefix }} -key {{ ssl_key_file }} -out {{ ssl_csr_file }} -config {{ ssl_config_file }}
+      args:
+        creates: "{{ ssl_csr_file }}"
+      register: registry_csr
+  
+    - name: Create a certificate for {{ registry_fqdn }}
+      vars:
+        openssl_cmd_prefix: 'openssl x509 -req'
+      shell: >
+         {{ openssl_cmd_prefix }} -in {{ ssl_csr_file }} -CA {{ ssl_ca_crt_file }} -CAkey {{ ssl_ca_key_file }} -CAcreateserial -out {{ ssl_cert_file }} -days 500 -sha256
+      args:
+        creates: "{{ ssl_cert_file }}"
+      register: registry_csr
+
+- name: copy self-signed cert to /etc/pki/ca-trust/source/anchors
+  become: yes
+  copy:
+    src: "{{ ssl_cert_file }}"
+    dest: "{{ update_trust_file_name }}"
+  register: add_cert_to_trust
+  tags: [update_trust, ssl_certs, deploy_registry]
+
+- name: Update the host with the trust with the self-signed certs
+  when: add_cert_to_trust.changed
+  shell: update-ca-trust
+  become: yes
+  tags: [update_trust, ssl_certs, deploy_registry]
+
+- name: validate the host trusts
+  tags: [update_trust, ssl_certs, deploy_registry]
+  block:
+    - name: run openssl verify -CAfile /etc/pki/tls/cert.pem {{ ssl_cert_file }}
+      shell: openssl verify -CAfile /etc/pki/tls/cert.pem {{ ssl_cert_file }}
+      register: validate_trust
+  rescue:
+    - name: Host does not trust {{ registry_fqdn }}
+      debug:
+        var: validate_trust.stdout
+

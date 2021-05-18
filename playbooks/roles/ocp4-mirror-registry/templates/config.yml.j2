@@ -16,8 +16,12 @@ health:
     enabled: true
     interval: 10s
     threshold: 3
-#proxy:
-#  remoteurl: https://quay.io
+proxy:
+{% for item in proxy_configs %}
+  remoteurl: {{ item.remoteurl|e }}
+  username: '{{ item.username|e }}'
+  password: '{{ item.password|e }}'
+{% endfor -%}   
 compatibility:
   schema1:
     enabled: true

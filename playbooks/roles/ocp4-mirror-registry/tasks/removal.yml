@@ -1,0 +1,47 @@
+---
+- name: remove pip packages
+  pip:
+    name: "{{ item }}"
+    state: "{{ container_state }}"
+  loop:
+    - passlib
+    - bcrypt
+  tags: remove_packages
+
+- name: Remove container registry container files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ container_dir }}/certs"
+    - "{{ container_dir }}/auth"
+    - "{{ containers_certs_d }}"
+    - "{{ secret_file }}"
+  become: yes
+  tags: remove_registry_files
+
+- name: Remove container registry certs
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ssl_ca_key_file }}"
+    - "{{ ssl_ca_csr_file }}"
+    - "{{ ssl_ca_crt_file }}"
+    - "{{ ssl_cert_file }}"
+    - "{{ ssl_key_file }}"
+    - "{{ ssl_csr_file }}"
+    - "{{ ssl_certs_source }}/QubinoderootCA.srl"
+    - "{{ ssl_config_file }}"
+    - "{{ update_trust_file_name }}"
+  notify: 
+    - Update the host with the trust with the self-signed certs
+  become: yes
+  tags: remove_registry_certs
+
+- name: Remove the registry container
+  become: yes
+  containers.podman.podman_container:
+    name: ocp4-registry-mirror
+    state: "{{ container_state }}"
+  tags: [ registry_container_state, container ]

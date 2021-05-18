@@ -1,0 +1,150 @@
+---
+- name: prereqs for registry
+  tags: [registry_prereq, deploy_registry]
+  become: yes
+  block:
+    - name: Ensure required directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0775'
+        owner: "{{ container_user }}"
+        group: "{{ container_group }}"
+      loop:
+        - "{{ container_data_dir }}"
+        - "{{ container_dir }}/conf"
+        - "{{ container_dir }}/auth"
+        - "{{ container_dir }}/certs"
+        - "{{ containers_certs_d }}"
+
+    - name: ensure cert files are copied to {{ containers_certs_d }}
+      copy:
+        src: "{{ ssl_certs_source }}/{{ item }}"
+        dest: "{{ containers_certs_d }}/{{ item }}"
+        mode: 0644
+      loop:
+        - "{{ ssl_key_filename }}"
+        - "{{ ssl_cert_filename }}"
+
+    - name: ensure certs are copied to {{ container_dir }} certs dir
+      copy:
+        src: "{{ ssl_certs_source }}/{{ item }}"
+        dest: "{{ container_dir }}/certs"
+        mode: 0644
+      loop:
+        - "{{ ssl_key_filename }}"
+        - "{{ ssl_cert_filename }}"
+
+    - name: open ports for registry
+      firewalld:
+        port: "{{ registry_port }}/tcp"
+        permanent: yes
+        immediate: yes
+        state: enabled
+
+    - name: rename {{ ssl_cert_filename }} to have cert suffix
+      copy:
+        src: "{{ ssl_cert_file }}"
+        dest: "{{ containers_certs_d }}/{{ registry_fqdn }}.cert"
+        mode: 0644
+      ignore_errors: yes
+
+- name: create random secret for container registry
+  set_fact:
+    registry_http_secret: "{{ lookup('password', secret_file + ' ' + 'chars=ascii_letters') }}"
+  tags: [ registry, deploy_registry ]
+
+- name: install pip packages
+  pip:
+    name: "{{ item }}"
+    extra_args: --user
+  loop:
+    - passlib
+    - bcrypt
+  tags: [packages, pip, deploy_registry]
+
+- name: create htpasswd user for registry container
+  htpasswd:
+    state: present
+    path: "{{ container_dir }}/auth/htpasswd"
+    username: "{{ registry_username }}"
+    password: "{{ registry_password }}"
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+    mode: 0640
+    crypt_scheme: bcrypt
+  tags: [setup_htpasswd, deploy_registry]
+
+- name: include registry proxy vars
+  include_vars: /tmp/result.yml
+  tags: [registry, deploy_registry, registry_config]
+
+- name: deploy registry config
+  template: 
+    src: config.yml.j2
+    dest: "{{ container_dir }}/conf/config.yml"
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+    mode: 0644
+  tags: [registry, deploy_registry, registry_config]
+
+- name: Check if container registry is listening
+  uri:
+    url: "https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
+    user: "{{ registry_username }}"
+    password: "{{ registry_password }}"
+    force_basic_auth: yes
+    validate_certs: no
+  register: container_registry_listen
+  ignore_errors: yes
+  tags: [registry, deploy_registry]
+
+- name: Create and start or delete the registry container
+  become: yes
+  containers.podman.podman_container:
+    name: ocp4-registry-mirror
+    image: registry:2.7.1
+    state: "{{ container_state }}"
+    ports:
+        - "{{ registry_port }}:{{ registry_port }}"
+    volume:
+      - "{{ container_data_dir }}:/registry:z"
+      - "{{ container_dir }}/auth:/auth:z"
+      - "{{ container_dir }}/certs:/certs:z"
+      - "{{ container_dir }}/conf/config.yml:/etc/docker/registry/config.yml:z"
+    env:
+       REGISTRY_AUTH_HTPASSWD_REALM: Registry
+       REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+       REGISTRY_AUTH: htpasswd
+       REGISTRY_HTTP_SECRET: "{{ registry_http_secret }}"
+       #REGISTRY_HTTP_SECRET: "]c4Ict<cg.;w1TlVC6^m&ZNODfZ$"
+       REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/{{ ssl_cert_filename }}"
+       REGISTRY_HTTP_TLS_KEY: "/certs/{{ ssl_key_filename }}"
+       REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /registry
+  tags: [ registry_container_state, container, registry, deploy_registry ]
+  
+- name: Get facts about the registry container
+  become: yes
+  containers.podman.podman_container_info:
+    name:
+      - ocp4-registry-mirror
+  register: container_status
+  tags: [ registry_container_state, container, registry, deploy_registry ]
+
+- name: show container status
+  debug:
+    msg: >
+      - "The container ocp4-registry-mirror status is {{ container_status.containers.0.State.Status }}"
+      - "Access is via https://{{ registry_fqdn }}:{{ registry_port }}/v2/_catalog"
+  tags: [ registry_container_state, container, registry, deploy_registry ]
+
+
+   
+- name: deploy registry config
+  template: 
+    src: podman-run.txt.j2
+    dest: /tmp/podman-run.txt
+    owner: "{{ container_user }}"
+    group: "{{ container_group }}"
+    mode: 0644
+  tags: [registry, deploy_registry]

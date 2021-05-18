@@ -1,0 +1,26 @@
+---
+# tasks file for ocp4-mirror-registry
+
+- name: install the required packages for the registry node
+  when: container_state != 'absent'
+  yum:
+    name: "python3,podman,httpd,httpd-tools,jq"
+    state: installed
+  become: yes
+  tags: packages
+
+- name: create required self-signed certs
+  when: container_state != 'absent'
+  import_tasks: create-self-signed-pki.yml
+
+- name: deploy register container
+  when: container_state != 'absent'
+  import_tasks: create-registry.yml
+
+- name: deploy ocp4 files
+  when: container_state != 'absent'
+  import_tasks: create-ocp-install-files.yml
+
+- name: Remove the ocp reg
+  when: container_state == 'absent'
+  import_tasks: removal.yml

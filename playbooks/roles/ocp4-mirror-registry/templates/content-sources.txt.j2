@@ -1,0 +1,33 @@
+- mirrors:
+  - {{ registry_quay_fqdn }}:{{ registry_port }}/openshift-release-dev/ocp-release
+  source: quay.io/openshift-release-dev/ocp-release
+- mirrors:
+  - {{ registry_svc_fqdn }}:{{ registry_port }}/openshift-release-dev/ocp-release
+  source: registry.svc.ci.openshift.org/ocp/release
+- mirrors:
+  - {{ registry_quay_fqdn  }}:{{ registry_port }}/openshift-release-dev/ocp-v4.0-art-dev
+  source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+- mirrors:
+  - {{ registry_quay_fqdn  }}:{{ registry_port }}/openshift-release-dev/ocp-release
+  source: cdn02.quay.io/openshift-release-dev/ocp-release
+- mirrors:
+  - {{ registry_quay_fqdn  }}:{{ registry_port }}/openshift-release-dev/ocp-v4.0-art-dev
+  source: cdn02.quay.io/openshift-release-dev/ocp-v4.0-art-dev
+- mirrors:
+  - {{ registry_redhat_fqdn }}:{{ registry_port }}/openshift4
+  source: registry.redhat.io/openshift4
+- mirrors:
+  - {{ registry_redhat_fqdn }}:{{ registry_port }}/container-native-virtualization
+  source: registry.redhat.io/container-native-virtualization
+- mirrors:
+  - {{ registry_redhat_fqdn }}:{{ registry_port }}/ocs4
+  source: registry.redhat.io/ocs4
+- mirrors:
+  - {{ registry_redhat_fqdn }}:{{ registry_port }}/redhat
+  source: registry.redhat.io/redhat
+- mirrors:
+  - {{ registry_redhat_fqdn}}:{{ registry_port }}/rhceph
+  source: registry.redhat.io/rhceph
+- mirrors:
+  - {{ registry_redhat_fqdn }}:{{ registry_port }}/rhscl
+  source: registry.redhat.io/rhscl

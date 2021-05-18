@@ -1,0 +1,16 @@
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = req_ext
+prompt = no
+[req_distinguished_name]
+C   = {{ self_signed_certs_options.cert_country }}
+ST  = {{ self_signed_certs_options.cert_state }}
+L   = {{ self_signed_certs_options.cert_locality }}
+O   = {{ self_signed_certs_options.cert_org_name }}
+OU  = {{ self_signed_certs_options.cert_org_unit }}
+CN  = {{ self_signed_certs_options.cert_common_name }}
+[req_ext]
+subjectAltName = @alt_names
+[alt_names]
+IP.1 = {{ registry_ip }}
+DNS.1 = {{ registry_fqdn }}
